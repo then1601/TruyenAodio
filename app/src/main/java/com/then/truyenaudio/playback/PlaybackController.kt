@@ -49,6 +49,12 @@ object PlaybackController {
         pitch: Float = state.value.pitch,
         autoNext: Boolean = state.value.autoNext
     ) {
+        context.getSharedPreferences(
+            PlaybackService.PREFERENCES_NAME,
+            Context.MODE_PRIVATE
+        ).edit()
+            .putFloat(PlaybackService.KEY_SPEED, speed)
+            .apply()
         pendingQueue = chapters
         pendingChapter = chapter
         pendingSpeed = speed
@@ -124,6 +130,22 @@ object PlaybackController {
             PlaybackService.PREFERENCES_NAME,
             Context.MODE_PRIVATE
         ).getFloat(PlaybackService.KEY_SPEED, PlaybackService.DEFAULT_SPEED)
+
+    fun savedChapterNumber(context: Context, novelId: Int): Int? {
+        val preferences = context.getSharedPreferences(
+            PlaybackService.PREFERENCES_NAME,
+            Context.MODE_PRIVATE
+        )
+        val savedNovelId = preferences.getInt(PlaybackService.KEY_NOVEL_ID, Int.MIN_VALUE)
+        if (savedNovelId != Int.MIN_VALUE && savedNovelId != novelId) {
+            return null
+        }
+        val chapterNumber = preferences.getInt(
+            PlaybackService.KEY_CHAPTER_NUMBER,
+            Int.MIN_VALUE
+        )
+        return chapterNumber.takeUnless { it == Int.MIN_VALUE }
+    }
 
     fun stop(context: Context) {
         startService(context, PlaybackService.ACTION_STOP)

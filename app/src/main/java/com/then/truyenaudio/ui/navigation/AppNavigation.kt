@@ -18,6 +18,7 @@ import com.then.truyenaudio.ui.home.HomeViewModel
 import com.then.truyenaudio.ui.reader.ReaderScreen
 import com.then.truyenaudio.ui.settings.SettingsScreen
 import com.then.truyenaudio.ui.library.SavedLinksScreen
+import com.then.truyenaudio.playback.PlaybackController
 
 @Composable
 fun AppNavigation(homeViewModel: HomeViewModel = viewModel()) {
@@ -42,14 +43,31 @@ fun AppNavigation(homeViewModel: HomeViewModel = viewModel()) {
             )
         }
         composable("detail") {
+            val resumeChapterNumber = state.novel?.let {
+                PlaybackController.savedChapterNumber(context, it.id)
+            }
+            val resumeChapter = state.chapters.firstOrNull {
+                it.chapterNumber == resumeChapterNumber
+            }
             NovelDetailScreen(
                 novel = state.novel,
                 chapters = state.chapters,
                 isLoading = state.isLoading,
                 error = state.error,
+                resumeChapter = resumeChapter,
                 onBack = { navController.popBackStack() },
                 onChapterClick = { chapter ->
                     homeViewModel.loadChapter(chapter) {
+                        navController.navigate("reader")
+                    }
+                },
+                onResumeClick = { chapter ->
+                    homeViewModel.loadChapter(chapter) { loadedChapter ->
+                        PlaybackController.play(
+                            context = context,
+                            chapter = loadedChapter,
+                            chapters = state.chapters
+                        )
                         navController.navigate("reader")
                     }
                 }

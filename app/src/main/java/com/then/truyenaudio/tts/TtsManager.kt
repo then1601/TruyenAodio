@@ -29,8 +29,7 @@ class TtsManager(
     private var pendingText: String? = null
     private var pendingCompletion: (() -> Unit)? = null
     private var pendingError: ((String) -> Unit)? = null
-    private var chunkCount = 0
-    private var completedChunks = 0
+    private val activeUtteranceIds = mutableSetOf<String>()
     private var released = false
 
     val status: StateFlow<TtsStatus> = _status.asStateFlow()
@@ -44,23 +43,30 @@ class TtsManager(
             }
 
             override fun onDone(utteranceId: String) {
-                if (utteranceId.startsWith(CHUNK_PREFIX)) {
-                    completedChunks++
-                    Log.d(TAG, "TTS completed chunk $completedChunks/$chunkCount")
-                    if (completedChunks >= chunkCount) {
-                        currentCompletion?.invoke()
-                        clearCallbacks()
-                    }
+                if (!utteranceId.startsWith(CHUNK_PREFIX) ||
+                    !activeUtteranceIds.remove(utteranceId)
+                ) {
+                    return
+                }
+                Log.d(TAG, "TTS completed utterance; remaining=${activeUtteranceIds.size}")
+                if (activeUtteranceIds.isEmpty()) {
+                    val completion = currentCompletion
+                    clearCallbacks()
+                    completion?.invoke()
                 }
             }
 
             @Deprecated("Required by the Android TextToSpeech API")
             override fun onError(utteranceId: String) {
-                handleUtteranceError("TextToSpeech engine error for utterance=$utteranceId")
+                handleUtteranceError(
+                    utteranceId,
+                    "TextToSpeech engine error for utterance=$utteranceId"
+                )
             }
 
             override fun onError(utteranceId: String, errorCode: Int) {
                 handleUtteranceError(
+                    utteranceId,
                     "TextToSpeech engine error code=$errorCode for utterance=$utteranceId"
                 )
             }
@@ -184,14 +190,14 @@ class TtsManager(
     ): Boolean {
         val engine = tts ?: return false
         val chunks = splitIntoChunks(text)
-        chunkCount = chunks.size
-        completedChunks = 0
+        activeUtteranceIds.clear()
         currentCompletion = onComplete
         currentError = onError
         Log.d(TAG, "Speaking ${chunks.size} chunk(s), totalLength=${text.length}")
 
         chunks.forEachIndexed { index, chunk ->
             val utteranceId = "$CHUNK_PREFIX${UUID.randomUUID()}-$index"
+            activeUtteranceIds += utteranceId
             val queueMode = if (index == 0) {
                 TextToSpeech.QUEUE_FLUSH
             } else {
@@ -200,7 +206,10 @@ class TtsManager(
             val result = engine.speak(chunk, queueMode, null, utteranceId)
             Log.d(TAG, "speak chunk=${index + 1}/${chunks.size}, length=${chunk.length}, result=$result")
             if (result == TextToSpeech.ERROR) {
-                handleUtteranceError("Không thể đưa nội dung vào hàng đợi đọc.")
+                handleUtteranceError(
+                    utteranceId,
+                    "Không thể đưa nội dung vào hàng đợi đọc."
+                )
                 return false
             }
         }
@@ -246,10 +255,14 @@ class TtsManager(
         pendingError = null
     }
 
-    private fun handleUtteranceError(message: String) {
+    private fun handleUtteranceError(utteranceId: String, message: String) {
+        if (!activeUtteranceIds.remove(utteranceId)) {
+            return
+        }
         Log.e(TAG, message)
-        currentError?.invoke(message)
+        val error = currentError
         clearCallbacks()
+        error?.invoke(message)
     }
 
     private fun clearCallbacks() {
@@ -258,8 +271,7 @@ class TtsManager(
         pendingText = null
         pendingCompletion = null
         pendingError = null
-        chunkCount = 0
-        completedChunks = 0
+        activeUtteranceIds.clear()
     }
 
     private companion object {

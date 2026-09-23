@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,7 +41,9 @@ fun NovelDetailScreen(
     isLoading: Boolean,
     error: String?,
     onBack: () -> Unit,
-    onChapterClick: (Chapter) -> Unit
+    onChapterClick: (Chapter) -> Unit,
+    resumeChapter: Chapter? = null,
+    onResumeClick: (Chapter) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -76,6 +80,28 @@ fun NovelDetailScreen(
                         Text(it, color = MaterialTheme.colorScheme.error)
                     }
                     Text("Danh sách chương", style = MaterialTheme.typography.titleMedium)
+                    resumeChapter?.let { chapter ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onResumeClick(chapter) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Nghe tiếp",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "Chương ${chapter.chapterNumber}: ${chapter.title}",
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
                         items(chapters) { chapter ->
                             ListItem(

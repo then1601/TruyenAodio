@@ -92,7 +92,7 @@ class PlaybackService : Service() {
         } else {
             0
         }
-        val speed = PlaybackController.pendingSpeed
+        val speed = preferences.getFloat(KEY_SPEED, PlaybackController.pendingSpeed)
         PlaybackController.updateState(
             chapter = chapter,
             chapters = chapters,
@@ -115,6 +115,7 @@ class PlaybackService : Service() {
         preferences.edit()
             .putInt(KEY_SEGMENT_INDEX, index)
             .putInt(KEY_CHAPTER_NUMBER, chapter.chapterNumber)
+            .putInt(KEY_NOVEL_ID, chapter.novelId)
             .putFloat(KEY_SPEED, PlaybackController.state.value.speed)
             .apply()
 
@@ -413,6 +414,7 @@ class PlaybackService : Service() {
         const val KEY_VOICE_NAME = "voice_name"
         const val KEY_SEGMENT_INDEX = "segment_index"
         const val KEY_CHAPTER_NUMBER = "chapter_number"
+        const val KEY_NOVEL_ID = "novel_id"
         const val KEY_SLEEP_TIMER_MINUTES = "sleep_timer_minutes"
         const val KEY_SLEEP_TIMER_DEADLINE = "sleep_timer_deadline"
         const val DEFAULT_SPEED = 1f
